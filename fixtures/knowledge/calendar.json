@@ -1,0 +1,34 @@
+[
+  {
+    "id": "cal.preg.nt-window",
+    "category": "CALENDAR_ITEM",
+    "title": "NT 超声常见窗口",
+    "plainText": "许多医院会在大约 11–14 周安排颈项透明层相关超声。这是参考日程，不是必须提醒；实际安排以医生为准。",
+    "stage": "PREGNANCY",
+    "gestationalWeekFrom": 11,
+    "gestationalWeekTo": 14,
+    "sourceNote": "人工整理：常见产检节点参考（非强制时点）",
+    "version": 1
+  },
+  {
+    "id": "cal.preg.anomaly-scan",
+    "category": "CALENDAR_ITEM",
+    "title": "大排畸常见窗口",
+    "plainText": "大排畸是孕中期常见的系统性胎儿结构超声，通常安排在 20–24 周左右，用来把宝宝主要器官的发育情况记进档案。",
+    "stage": "PREGNANCY",
+    "gestationalWeekFrom": 20,
+    "gestationalWeekTo": 24,
+    "sourceNote": "人工整理：常见产检节点参考（非强制时点）",
+    "version": 1
+  },
+  {
+    "id": "cal.baby.1m-checkup",
+    "category": "CALENDAR_ITEM",
+    "title": "满月体检参考节点",
+    "plainText": "宝宝出生后约满月时，常见会安排一次健康检查，把体重身长等记入成长档案。具体时间以社区或医院通知为准。",
+    "stage": "BABY_0_1",
+    "babyMonthAge": 1,
+    "sourceNote": "人工整理：常见儿童保健节点参考",
+    "version": 1
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "check.preg.bring-card",
+    "category": "CHECKLIST_ITEM",
+    "title": "孕期产检本 / 就诊卡",
+    "plainText": "去医院产检时通常需要携带产检本或就诊卡，方便对照既往记录。",
+    "stage": "PREGNANCY",
+    "checklistKind": "DOCUMENT",
+    "sourceNote": "人工整理：常见携带材料说明",
+    "version": 1
+  },
+  {
+    "id": "check.preg.bring-reports",
+    "category": "CHECKLIST_ITEM",
+    "title": "既往检查报告",
+    "plainText": "跨医院就诊时，带上近期超声或化验报告原件/清晰照片，有助于医生快速了解历史。",
+    "stage": "PREGNANCY",
+    "checklistKind": "DOCUMENT",
+    "sourceNote": "人工整理：常见携带材料说明",
+    "version": 1
+  },
+  {
+    "id": "check.baby.vaccination-book",
+    "category": "CHECKLIST_ITEM",
+    "title": "预防接种本",
+    "plainText": "接种或儿保时通常需要携带预防接种本，便于登记与核对。",
+    "stage": "BABY_0_1",
+    "checklistKind": "DOCUMENT",
+    "sourceNote": "人工整理：常见携带材料说明",
+    "version": 1
+  }
+]

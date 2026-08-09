@@ -1,0 +1,33 @@
+[
+  {
+    "id": "term.placenta-grade",
+    "category": "TERM",
+    "title": "胎盘分级",
+    "plainText": "胎盘分级是超声报告里对胎盘成熟度的描述方式，用来记入档案。数字本身不等于病情判断，具体含义以当次报告原文和医生说明为准。",
+    "stage": "PREGNANCY",
+    "gestationalWeekFrom": 20,
+    "gestationalWeekTo": 40,
+    "sourceNote": "人工整理：常见产科超声报告字段说明（非指南条款）",
+    "version": 1
+  },
+  {
+    "id": "term.nt",
+    "category": "TERM",
+    "title": "NT",
+    "plainText": "NT 通常指颈项透明层厚度，是孕早期常见超声测量项之一。芽纪只帮助你理解报告上出现的这个词，不做风险判断。",
+    "stage": "PREGNANCY",
+    "gestationalWeekFrom": 11,
+    "gestationalWeekTo": 14,
+    "sourceNote": "人工整理：常见产科超声报告字段说明（非指南条款）",
+    "version": 1
+  },
+  {
+    "id": "term.bp",
+    "category": "TERM",
+    "title": "血压",
+    "plainText": "血压记录用于在档案中观察趋势。居家自测与医院测量可同源归档，具体是否需要就医以医生判断为准。",
+    "stage": null,
+    "sourceNote": "人工整理：居家监测常见指标说明",
+    "version": 1
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "provider": "mock",
+  "suggestedCategory": { "value": "DELIVERY", "confidence": 0.91 },
+  "suggestedSubject": { "value": "MOTHER", "confidence": 0.9 },
+  "reportTitle": { "value": "出院记录（分娩）", "confidence": 0.93 },
+  "reportDate": { "value": "2026-05-20", "confidence": 0.95 },
+  "institution": { "value": "示例市第一人民医院", "confidence": 0.92 },
+  "conclusion": {
+    "value": "足月顺产一男婴，母婴一般情况可，准予出院。",
+    "confidence": 0.9
+  },
+  "rawText": "出院记录 ... 分娩日期 2026-05-20 新生儿体重 3200g",
+  "pages": [{ "pageNumber": 1, "rawText": "...", "success": true }],
+  "fields": [
+    {
+      "label": { "value": "分娩日期", "confidence": 0.96 },
+      "value": { "value": "2026-05-20", "confidence": 0.96 },
+      "fieldType": "KEY_VALUE"
+    },
+    {
+      "label": { "value": "新生儿体重", "confidence": 0.94 },
+      "value": { "value": "3200", "confidence": 0.94 },
+      "unit": { "value": "g", "confidence": 0.98 },
+      "fieldType": "MEASUREMENT"
+    }
+  ],
+  "tables": []
+}

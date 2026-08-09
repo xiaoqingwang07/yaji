@@ -1,0 +1,28 @@
+---
+description: Task/子代理仅允许使用 Grok 或 Composer 模型
+alwaysApply: true
+---
+
+# 子代理模型约束
+
+所有通过 Task / 子代理启动的任务，**模型只允许使用 Grok 或 Composer**；禁止 Claude、GPT 或其他模型族。
+
+## 允许的 model slug
+
+以 Cursor Task 工具当前列表为准，仅可选用：
+
+- `cursor-grok-4.5-high-fast`（Grok）
+- `composer-2.5-fast`（Composer）
+- `inherit`（仅当父会话本身已是 Grok / Composer 时）
+
+## 禁止
+
+- 任何 `claude-*` slug
+- 任何 `gpt-*` slug
+- 其他非 Grok / Composer 模型族
+
+## 执行要求
+
+- 调用 Task 时显式传入上述允许 slug之一；不确定时优先 `inherit`（父会话为 Grok/Composer）或 `cursor-grok-4.5-high-fast`。
+- 用户要求使用被禁模型时，拒绝切换并说明本规则限制，改用允许的 slug 继续。
+- 本代理自身亦须遵守：只用 Grok / Composer / inherit，不得切到其他模型族。

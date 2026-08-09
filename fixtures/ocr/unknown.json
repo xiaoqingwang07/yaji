@@ -1,0 +1,19 @@
+{
+  "provider": "mock",
+  "suggestedCategory": { "value": "OTHER", "confidence": 0.41 },
+  "suggestedSubject": { "value": "MOTHER", "confidence": 0.55 },
+  "reportTitle": { "value": "通用医疗报告", "confidence": 0.48 },
+  "reportDate": { "value": "2026-06-01", "confidence": 0.6 },
+  "institution": { "value": "未知机构", "confidence": 0.4 },
+  "conclusion": { "value": "", "confidence": 0.2 },
+  "rawText": "（低清晰度扫描件）部分文字无法可靠识别，请对照原图手动补录。",
+  "pages": [{ "pageNumber": 1, "rawText": "部分可识别文字", "success": true }],
+  "fields": [
+    {
+      "label": { "value": "日期", "confidence": 0.6 },
+      "value": { "value": "2026-06-01", "confidence": 0.6 },
+      "fieldType": "KEY_VALUE"
+    }
+  ],
+  "tables": []
+}

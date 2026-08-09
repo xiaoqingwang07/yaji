@@ -1,0 +1,29 @@
+{
+  "provider": "mock",
+  "suggestedCategory": { "value": "IMAGING", "confidence": 0.96 },
+  "suggestedSubject": { "value": "MOTHER", "confidence": 0.93 },
+  "reportTitle": { "value": "产科超声检查报告", "confidence": 0.95 },
+  "reportDate": { "value": "2026-07-18", "confidence": 0.97 },
+  "institution": { "value": "示例市妇幼保健院", "confidence": 0.91 },
+  "conclusion": {
+    "value": "单胎，头位，胎儿生长发育与孕周大致相符。",
+    "confidence": 0.9
+  },
+  "rawText": "产科超声检查报告\n示例市妇幼保健院\n检查日期：2026-07-18\nBPD 78mm  AC 245mm  FL 54mm\n结论：单胎，头位，胎儿生长发育与孕周大致相符。",
+  "pages": [{ "pageNumber": 1, "rawText": "...", "success": true }],
+  "fields": [
+    {
+      "label": { "value": "双顶径 BPD", "confidence": 0.94 },
+      "value": { "value": "78", "confidence": 0.94 },
+      "unit": { "value": "mm", "confidence": 0.98 },
+      "fieldType": "MEASUREMENT"
+    },
+    {
+      "label": { "value": "腹围 AC", "confidence": 0.93 },
+      "value": { "value": "245", "confidence": 0.92 },
+      "unit": { "value": "mm", "confidence": 0.98 },
+      "fieldType": "MEASUREMENT"
+    }
+  ],
+  "tables": []
+}

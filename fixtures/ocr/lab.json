@@ -1,0 +1,41 @@
+{
+  "provider": "mock",
+  "suggestedCategory": { "value": "LAB", "confidence": 0.94 },
+  "suggestedSubject": { "value": "MOTHER", "confidence": 0.88 },
+  "reportTitle": { "value": "血常规检验报告", "confidence": 0.92 },
+  "reportDate": { "value": "2026-07-10", "confidence": 0.9 },
+  "institution": { "value": "示例社区卫生服务中心", "confidence": 0.86 },
+  "conclusion": { "value": "详见各项结果。", "confidence": 0.8 },
+  "rawText": "血常规检验报告 ...",
+  "pages": [{ "pageNumber": 1, "rawText": "...", "success": true }],
+  "fields": [
+    {
+      "label": { "value": "血红蛋白", "confidence": 0.95 },
+      "value": { "value": "112", "confidence": 0.96 },
+      "unit": { "value": "g/L", "confidence": 0.99 },
+      "referenceRange": { "value": "115-150", "confidence": 0.9 },
+      "sourceFlag": { "value": "低", "confidence": 0.87 },
+      "fieldType": "MEASUREMENT"
+    },
+    {
+      "label": { "value": "白细胞", "confidence": 0.72 },
+      "value": { "value": "8.1", "confidence": 0.7 },
+      "unit": { "value": "10^9/L", "confidence": 0.8 },
+      "fieldType": "MEASUREMENT"
+    }
+  ],
+  "tables": [
+    {
+      "title": { "value": "血常规", "confidence": 0.9 },
+      "headers": ["项目", "结果", "单位", "参考"],
+      "rows": [
+        [
+          { "value": "血红蛋白", "confidence": 0.95 },
+          { "value": "112", "confidence": 0.96 },
+          { "value": "g/L", "confidence": 0.99 },
+          { "value": "115-150", "confidence": 0.9 }
+        ]
+      ]
+    }
+  ]
+}

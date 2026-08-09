@@ -1,0 +1,32 @@
+{
+  "provider": "mock",
+  "suggestedCategory": { "value": "CHILD_CHECKUP", "confidence": 0.95 },
+  "suggestedSubject": { "value": "BABY", "confidence": 0.97 },
+  "reportTitle": { "value": "儿童健康体检表", "confidence": 0.94 },
+  "reportDate": { "value": "2026-07-20", "confidence": 0.96 },
+  "institution": { "value": "示例社区儿童保健科", "confidence": 0.9 },
+  "conclusion": { "value": "生长发育正常。", "confidence": 0.88 },
+  "rawText": "儿童健康体检表 体重 6.8kg 身长 62cm 头围 40cm",
+  "pages": [{ "pageNumber": 1, "rawText": "...", "success": true }],
+  "fields": [
+    {
+      "label": { "value": "体重", "confidence": 0.97 },
+      "value": { "value": "6.8", "confidence": 0.97 },
+      "unit": { "value": "kg", "confidence": 0.99 },
+      "fieldType": "MEASUREMENT"
+    },
+    {
+      "label": { "value": "身长", "confidence": 0.96 },
+      "value": { "value": "62", "confidence": 0.96 },
+      "unit": { "value": "cm", "confidence": 0.99 },
+      "fieldType": "MEASUREMENT"
+    },
+    {
+      "label": { "value": "头围", "confidence": 0.95 },
+      "value": { "value": "40", "confidence": 0.95 },
+      "unit": { "value": "cm", "confidence": 0.99 },
+      "fieldType": "MEASUREMENT"
+    }
+  ],
+  "tables": []
+}

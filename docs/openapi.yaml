@@ -1,0 +1,827 @@
+openapi: 3.0.3
+info:
+  title: 芽纪 API
+  version: 0.2.0
+  description: |
+    MVP OpenAPI 契约，对应执行规格第 8.2 节。
+    2026-08-09 原型确认后对齐 v2.0：存量导入、就诊录音、阶段小结、「此刻」与知识库。
+servers:
+  - url: /api/v1
+paths:
+  /auth/request-code:
+    post:
+      summary: 请求短信验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile]
+              properties:
+                mobile: { type: string, example: "13800138000" }
+      responses:
+        "200":
+          description: 已发送（脱敏响应）
+  /auth/verify-code:
+    post:
+      summary: 验证码登录
+      responses:
+        "200":
+          description: 返回 access/refresh token
+  /auth/dev-login:
+    post:
+      summary: 开发登录（非生产）
+      responses:
+        "200":
+          description: tokens
+  /auth/refresh:
+    post:
+      summary: 刷新令牌
+      responses:
+        "200":
+          description: tokens
+  /auth/logout:
+    post:
+      summary: 登出
+      responses:
+        "204":
+          description: 无内容
+  /me:
+    get:
+      summary: 当前用户
+      responses:
+        "200":
+          description: 用户资料
+    patch:
+      summary: 更新资料
+      responses:
+        "200":
+          description: 用户资料
+  /families:
+    get:
+      summary: 家庭列表
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 创建家庭
+      responses:
+        "201":
+          description: 家庭
+  /families/{familyId}:
+    get:
+      summary: 家庭详情
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 家庭
+    patch:
+      summary: 更新家庭
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 家庭
+  /families/{familyId}/members:
+    get:
+      summary: 成员列表
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 成员
+  /families/{familyId}/invites:
+    post:
+      summary: 创建邀请
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: 邀请令牌（一次性展示）
+  /invites/{token}/accept:
+    post:
+      summary: 接受邀请
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 成员关系
+  /families/{familyId}/members/{memberId}:
+    patch:
+      summary: 调整成员
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 成员
+    delete:
+      summary: 移除成员
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: 已移除
+  /families/{familyId}/mother-profiles:
+    get:
+      summary: 妈妈档案列表
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 创建妈妈档案
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: 档案
+  /mother-profiles/{motherProfileId}:
+    get:
+      summary: 妈妈档案详情
+      parameters:
+        - name: motherProfileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 档案
+    patch:
+      summary: 更新妈妈档案
+      parameters:
+        - name: motherProfileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 档案
+  /families/{familyId}/pregnancies:
+    get:
+      summary: 孕期列表
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 创建孕期
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: 孕期
+  /pregnancies/{pregnancyId}:
+    get:
+      summary: 孕期详情
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 孕期
+    patch:
+      summary: 更新孕期
+      parameters:
+        - name: pregnancyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 孕期
+  /families/{familyId}/babies:
+    post:
+      summary: 创建宝宝档案
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: 宝宝
+  /babies/{babyId}:
+    get:
+      summary: 宝宝详情
+      parameters:
+        - name: babyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 宝宝
+    patch:
+      summary: 更新宝宝
+      parameters:
+        - name: babyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 宝宝
+  /families/{familyId}/events:
+    get:
+      summary: 时间轴事件
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 游标分页列表
+    post:
+      summary: 创建事件
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: 事件
+  /events/{eventId}:
+    get:
+      summary: 事件详情
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 事件
+    patch:
+      summary: 更新事件
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 事件
+    delete:
+      summary: 软删除事件
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: 已删除
+  /families/{familyId}/search:
+    get:
+      summary: 搜索已确认档案
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: 搜索结果
+  /families/{familyId}/attachments/presign-upload:
+    post:
+      summary: 预签名上传
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: uploadUrl + attachmentId
+  /families/{familyId}/attachments/complete:
+    post:
+      summary: 完成上传
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: attachment
+  /families/{familyId}/reports:
+    post:
+      summary: 创建报告草稿
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: report
+  /reports/{reportId}/recognize:
+    post:
+      summary: 触发 OCR
+      parameters:
+        - $ref: "#/components/parameters/reportId"
+      responses:
+        "202":
+          description: 已入队
+  /reports/{reportId}:
+    get:
+      summary: 报告详情
+      parameters:
+        - $ref: "#/components/parameters/reportId"
+      responses:
+        "200":
+          description: report
+  /reports/{reportId}/draft:
+    patch:
+      summary: 保存报告修订草稿
+      parameters:
+        - $ref: "#/components/parameters/reportId"
+      responses:
+        "200":
+          description: report
+  /reports/{reportId}/confirm:
+    post:
+      summary: 确认归档
+      parameters:
+        - $ref: "#/components/parameters/reportId"
+      responses:
+        "200":
+          description: 确认后的报告与事件
+  /reports/{reportId}/retry:
+    post:
+      summary: 重试 OCR
+      parameters:
+        - $ref: "#/components/parameters/reportId"
+      responses:
+        "202":
+          description: 已入队
+  /families/{familyId}/health-overview:
+    get:
+      summary: 健康总览
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 妈妈/宝宝最近值
+  /mother-profiles/{motherProfileId}/health-records:
+    get:
+      summary: 妈妈健康记录
+      parameters:
+        - name: motherProfileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: stage
+          in: query
+          schema: { type: string, enum: [PREGNANCY, POSTPARTUM] }
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 新增妈妈健康记录
+      parameters:
+        - name: motherProfileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: 记录
+  /mother-health-records/{recordId}:
+    patch:
+      summary: 更新妈妈健康记录
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 记录
+    delete:
+      summary: 删除妈妈健康记录
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: 已删除
+  /babies/{babyId}/growth-records:
+    get:
+      summary: 宝宝成长记录
+      parameters:
+        - name: babyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 新增宝宝成长记录
+      parameters:
+        - name: babyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: 记录
+  /baby-growth-records/{recordId}:
+    patch:
+      summary: 更新宝宝成长记录
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 记录
+    delete:
+      summary: 删除宝宝成长记录
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: 已删除
+  /babies/{babyId}/vaccination-records:
+    get:
+      summary: 疫苗记录
+      parameters:
+        - name: babyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 新增疫苗记录
+      parameters:
+        - name: babyId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: 记录
+  /vaccination-records/{recordId}:
+    patch:
+      summary: 更新疫苗记录
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 记录
+    delete:
+      summary: 删除疫苗记录
+      parameters:
+        - name: recordId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: 已删除
+  /families/{familyId}/reminders:
+    get:
+      summary: 提醒列表
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 创建提醒
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: 提醒
+  /reminders/{reminderId}:
+    patch:
+      summary: 更新提醒
+      parameters:
+        - name: reminderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 提醒
+  /reminders/{reminderId}/complete:
+    post:
+      summary: 完成提醒
+      parameters:
+        - name: reminderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 提醒
+  /reminders/{reminderId}/cancel:
+    post:
+      summary: 取消提醒
+      parameters:
+        - name: reminderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 提醒
+  /me/consents:
+    get:
+      summary: 同意记录
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 记录同意
+      responses:
+        "201":
+          description: 同意记录
+  /families/{familyId}/exports:
+    post:
+      summary: 创建导出任务
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "202":
+          description: 导出任务
+  /exports/{exportId}:
+    get:
+      summary: 导出任务状态
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: 状态与下载信息
+  /me/deletion-requests:
+    post:
+      summary: 账号删除申请
+      responses:
+        "202":
+          description: 已受理
+  /families/{familyId}/deletion-requests:
+    post:
+      summary: 家庭删除申请
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "202":
+          description: 已受理
+  /families/onboard:
+    post:
+      summary: 极简建档（备孕 / 怀孕中 / 已出生）
+      responses:
+        "201":
+          description: 家庭 + 妈妈档案 + 孕期或宝宝
+  /reports/{reportId}/explanation:
+    get:
+      summary: 白话解读及每条出处（缓存）
+      parameters:
+        - $ref: "#/components/parameters/reportId"
+      responses:
+        "200":
+          description: explanation
+  /families/{familyId}/import-batches:
+    get:
+      summary: 存量导入批次列表
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 创建存量导入批次
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: batch
+  /import-batches/{batchId}:
+    get:
+      summary: 批次进度与逐份状态
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: batch detail
+  /import-batches/{batchId}/reports:
+    post:
+      summary: 向批次追加报告
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: reports
+  /import-batches/{batchId}/abandon:
+    post:
+      summary: 放弃未完成批次（已确认报告保留）
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: batch
+  /families/{familyId}/visit-recordings:
+    post:
+      summary: 创建就诊录音并取得上传凭证
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "201":
+          description: recording + uploadUrl
+  /visit-recordings/{recordingId}:
+    get:
+      summary: 录音详情
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: recording
+    delete:
+      summary: 软删除录音
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: 已删除
+  /visit-recordings/{recordingId}/transcribe:
+    post:
+      summary: 触发转写与要素抽取
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: 已入队
+  /visit-recordings/{recordingId}/draft:
+    patch:
+      summary: 修订抽取结果
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: recording
+  /visit-recordings/{recordingId}/confirm:
+    post:
+      summary: 确认入档（事务）
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: recording + events
+  /visit-recordings/{recordingId}/retry:
+    post:
+      summary: 重试转写
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: 已入队
+  /families/{familyId}/stage-summaries:
+    get:
+      summary: 阶段小结列表
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: 列表
+    post:
+      summary: 生成阶段小结（命中未失效缓存则直接返回）
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: summary
+  /stage-summaries/{summaryId}:
+    get:
+      summary: 阶段小结详情
+      parameters:
+        - name: summaryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: summary
+  /stage-summaries/{summaryId}/refresh:
+    post:
+      summary: STALE 时重算
+      parameters:
+        - name: summaryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: summary
+  /families/{familyId}/now:
+    get:
+      summary: 「此刻」聚合（节点、下一步、携带、轨迹、最近就诊）
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: now view
+  /families/{familyId}/care-calendar:
+    get:
+      summary: 标准孕育日历与材料清单
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+      responses:
+        "200":
+          description: calendar items
+  /families/{familyId}/care-calendar/{entryId}/adopt:
+    post:
+      summary: 标准日程转提醒
+      parameters:
+        - $ref: "#/components/parameters/familyId"
+        - name: entryId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: reminder
+  /knowledge-entries/{entryId}:
+    get:
+      summary: 知识库条目详情（解读出处）
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: knowledge entry
+components:
+  parameters:
+    familyId:
+      name: familyId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    reportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            fieldErrors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }

@@ -1,0 +1,806 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING_DELETION
+}
+
+enum FamilyRelation {
+  MOTHER
+  FATHER
+  GRANDPARENT
+  CAREGIVER
+  OTHER
+}
+
+enum MemberRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum MemberStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum PregnancyStatus {
+  PLANNING
+  PREGNANT
+  DELIVERED
+  CLOSED
+}
+
+enum EventStage {
+  PRECONCEPTION
+  PREGNANCY
+  DELIVERY
+  POSTPARTUM
+  BABY_0_1
+  FAMILY
+}
+
+enum EventType {
+  PRENATAL_CHECK
+  MEDICAL_REPORT
+  SYMPTOM
+  MEDICATION
+  DOCTOR_NOTE
+  VISIT_RECORDING
+  DELIVERY
+  POSTPARTUM_CHECK
+  BABY_CHECKUP
+  NEWBORN_SCREENING
+  VACCINATION
+  ILLNESS_VISIT
+  MILESTONE
+  OTHER
+}
+
+enum EventSource {
+  MANUAL
+  REPORT_IMPORT
+  BULK_IMPORT
+  VOICE_IMPORT
+  HEALTH_RECORD
+  SYSTEM
+}
+
+enum AttachmentStatus {
+  PENDING
+  UPLOADED
+  FAILED
+  DELETED
+}
+
+enum ReportStatus {
+  UPLOADING
+  UPLOADED
+  PROCESSING
+  NEEDS_REVIEW
+  CONFIRMED
+  FAILED
+}
+
+enum ReportCategory {
+  IMAGING
+  LAB
+  PRENATAL_SPECIAL
+  OUTPATIENT_RECORD
+  PRESCRIPTION
+  INPATIENT_DISCHARGE
+  DELIVERY
+  POSTPARTUM_CHECK
+  NEWBORN_SCREENING
+  CHILD_CHECKUP
+  VACCINATION
+  OTHER
+}
+
+enum FieldType {
+  KEY_VALUE
+  MEASUREMENT
+  TEXT
+  TABLE_CELL
+}
+
+enum ImportBatchStatus {
+  IN_PROGRESS
+  PARTIALLY_CONFIRMED
+  COMPLETED
+  ABANDONED
+}
+
+enum VisitRecordingStatus {
+  RECORDING
+  UPLOADING
+  TRANSCRIBING
+  EXTRACTING
+  NEEDS_REVIEW
+  CONFIRMED
+  FAILED
+}
+
+enum VisitRecordingSource {
+  IN_APP
+  IMPORTED
+}
+
+enum StageSummaryStatus {
+  GENERATING
+  READY
+  STALE
+  FAILED
+}
+
+enum StageSummaryRangePreset {
+  LAST_1M
+  LAST_3M
+  LAST_6M
+  WHOLE_PREGNANCY
+  SINCE_BIRTH
+  CUSTOM
+}
+
+enum KnowledgeCategory {
+  TERM
+  CALENDAR_ITEM
+  CHECKLIST_ITEM
+}
+
+enum ChecklistKind {
+  MEDICAL
+  DOCUMENT
+}
+
+enum MotherHealthStage {
+  PREGNANCY
+  POSTPARTUM
+}
+
+enum MotherRecordType {
+  MEASUREMENT
+  SYMPTOM
+  CHECKUP
+}
+
+enum MeasurementSource {
+  MANUAL
+  REPORT_SYNC
+  HOME_MONITOR
+}
+
+enum BabyRecordType {
+  BIRTH
+  MEASUREMENT
+  CHECKUP
+  MILESTONE
+}
+
+enum ReminderType {
+  PRENATAL_CHECK
+  POSTPARTUM_CHECK
+  BABY_CHECKUP
+  MEDICATION
+  VACCINATION
+  OTHER
+}
+
+enum ReminderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ConsentType {
+  TERMS_PRIVACY
+  SENSITIVE_HEALTH
+  FAMILY_SHARING
+  OCR_CLOUD_PROCESSING
+  AI_CLOUD_PROCESSING
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum JobType {
+  OCR_RECOGNIZE
+  ASR_TRANSCRIBE
+  LLM_EXPLAIN
+  LLM_STAGE_SUMMARY
+  EXPORT_FAMILY
+  DELETE_ACCOUNT
+  DELETE_FAMILY
+}
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  mobileEncrypted String
+  mobileHash      String     @unique
+  displayName     String?
+  status          UserStatus @default(ACTIVE)
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  memberships         FamilyMember[]
+  createdFamilies     Family[]              @relation("FamilyCreator")
+  consents            ConsentRecord[]
+  auditLogs           AuditLog[]            @relation("AuditActor")
+  createdEvents       Event[]               @relation("EventCreator")
+  uploadedAttachments Attachment[]          @relation("AttachmentUploader")
+  confirmedReports    Report[]              @relation("ReportConfirmer")
+  reminders           Reminder[]
+  motherHealthRecords MotherHealthRecord[]
+  babyGrowthRecords   BabyGrowthRecord[]
+  vaccinationRecords  VaccinationRecord[]
+  invitesSent         FamilyInvite[]        @relation("InviteSender")
+  importBatches       ImportBatch[]         @relation("ImportBatchCreator")
+  visitRecordingsConfirmed VisitRecording[] @relation("VisitRecordingConfirmer")
+  stageSummaries      StageSummary[]        @relation("StageSummaryCreator")
+  refreshTokens       RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Family {
+  id                String    @id @default(uuid()) @db.Uuid
+  name              String
+  activePregnancyId String?   @db.Uuid
+  createdByUserId   String    @db.Uuid
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  createdBy           User                 @relation("FamilyCreator", fields: [createdByUserId], references: [id])
+  members             FamilyMember[]
+  invites             FamilyInvite[]
+  motherProfiles      MotherProfile[]
+  pregnancies         Pregnancy[]
+  babies              Baby[]
+  events              Event[]
+  attachments         Attachment[]
+  reports             Report[]
+  motherHealthRecords MotherHealthRecord[]
+  babyGrowthRecords   BabyGrowthRecord[]
+  vaccinationRecords  VaccinationRecord[]
+  reminders           Reminder[]
+  consents            ConsentRecord[]
+  auditLogs           AuditLog[]
+  jobs                AsyncJob[]
+  importBatches       ImportBatch[]
+  visitRecordings     VisitRecording[]
+  stageSummaries      StageSummary[]
+}
+
+model MotherProfile {
+  id           String    @id @default(uuid()) @db.Uuid
+  familyId     String    @db.Uuid
+  linkedUserId String?   @db.Uuid
+  displayName  String?
+  dateOfBirth  DateTime? @db.Date
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  family          Family               @relation(fields: [familyId], references: [id])
+  pregnancies     Pregnancy[]
+  babies          Baby[]
+  events          Event[]
+  reports         Report[]
+  healthRecords   MotherHealthRecord[]
+  reminders       Reminder[]
+  visitRecordings VisitRecording[]
+}
+
+model FamilyMember {
+  id        String       @id @default(uuid()) @db.Uuid
+  familyId  String       @db.Uuid
+  userId    String       @db.Uuid
+  relation  FamilyRelation
+  role      MemberRole
+  status    MemberStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  family Family @relation(fields: [familyId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([familyId, userId])
+  @@index([userId])
+}
+
+model FamilyInvite {
+  id              String         @id @default(uuid()) @db.Uuid
+  familyId        String         @db.Uuid
+  invitedByUserId String         @db.Uuid
+  tokenHash       String         @unique
+  relation        FamilyRelation
+  role            MemberRole
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  family    Family @relation(fields: [familyId], references: [id])
+  invitedBy User   @relation("InviteSender", fields: [invitedByUserId], references: [id])
+}
+
+model Pregnancy {
+  id                String          @id @default(uuid()) @db.Uuid
+  familyId          String          @db.Uuid
+  motherProfileId   String          @db.Uuid
+  lastMenstrualDate DateTime?       @db.Date
+  dueDate           DateTime?       @db.Date
+  deliveryDate      DateTime?       @db.Date
+  status            PregnancyStatus @default(PREGNANT)
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  family              Family               @relation(fields: [familyId], references: [id])
+  motherProfile       MotherProfile        @relation(fields: [motherProfileId], references: [id])
+  babies              Baby[]
+  events              Event[]
+  reports             Report[]
+  motherHealthRecords MotherHealthRecord[]
+  reminders           Reminder[]
+  visitRecordings     VisitRecording[]
+}
+
+model Baby {
+  id              String    @id @default(uuid()) @db.Uuid
+  familyId        String    @db.Uuid
+  pregnancyId     String?   @db.Uuid
+  motherProfileId String    @db.Uuid
+  nickname        String?
+  birthDate       DateTime  @db.Date
+  sex             String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  family          Family              @relation(fields: [familyId], references: [id])
+  pregnancy       Pregnancy?          @relation(fields: [pregnancyId], references: [id])
+  motherProfile   MotherProfile       @relation(fields: [motherProfileId], references: [id])
+  events          Event[]
+  reports         Report[]
+  growthRecords   BabyGrowthRecord[]
+  vaccinations    VaccinationRecord[]
+  reminders       Reminder[]
+  visitRecordings VisitRecording[]
+}
+
+model Event {
+  id              String      @id @default(uuid()) @db.Uuid
+  familyId        String      @db.Uuid
+  pregnancyId     String?     @db.Uuid
+  motherProfileId String?     @db.Uuid
+  babyId          String?     @db.Uuid
+  stage           EventStage
+  type            EventType
+  title           String
+  occurredAt      DateTime
+  location        String?
+  notes           String?
+  costAmount      Decimal?    @db.Decimal(12, 2)
+  costNote        String?
+  source          EventSource @default(MANUAL)
+  createdByUserId String      @db.Uuid
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  family             Family              @relation(fields: [familyId], references: [id])
+  pregnancy          Pregnancy?          @relation(fields: [pregnancyId], references: [id])
+  motherProfile      MotherProfile?      @relation(fields: [motherProfileId], references: [id])
+  baby               Baby?               @relation(fields: [babyId], references: [id])
+  createdBy          User                @relation("EventCreator", fields: [createdByUserId], references: [id])
+  attachments        Attachment[]
+  reports            Report[]
+  motherHealthRecord MotherHealthRecord?
+  babyGrowthRecord   BabyGrowthRecord?
+  vaccinationRecord  VaccinationRecord?
+  reminders          Reminder[]
+  visitRecording     VisitRecording?
+
+  @@index([familyId, occurredAt])
+  @@index([familyId, deletedAt])
+}
+
+model Attachment {
+  id               String           @id @default(uuid()) @db.Uuid
+  familyId         String           @db.Uuid
+  eventId          String?          @db.Uuid
+  storageKey       String
+  originalFileName String
+  mimeType         String
+  sizeBytes        Int
+  sha256           String
+  status           AttachmentStatus @default(PENDING)
+  uploadedByUserId String           @db.Uuid
+  deletedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  family          Family             @relation(fields: [familyId], references: [id])
+  event           Event?             @relation(fields: [eventId], references: [id])
+  uploadedBy      User               @relation("AttachmentUploader", fields: [uploadedByUserId], references: [id])
+  reportLinks     ReportAttachment[]
+  visitRecordings VisitRecording[]
+
+  @@index([familyId])
+}
+
+model ImportBatch {
+  id             String            @id @default(uuid()) @db.Uuid
+  familyId       String            @db.Uuid
+  status         ImportBatchStatus @default(IN_PROGRESS)
+  totalCount     Int               @default(0)
+  confirmedCount Int               @default(0)
+  failedCount    Int               @default(0)
+  startedAt      DateTime          @default(now())
+  finishedAt     DateTime?
+  createdByUserId String           @db.Uuid
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  family    Family   @relation(fields: [familyId], references: [id])
+  createdBy User     @relation("ImportBatchCreator", fields: [createdByUserId], references: [id])
+  reports   Report[]
+
+  @@index([familyId, status])
+}
+
+model Report {
+  id                      String          @id @default(uuid()) @db.Uuid
+  familyId                String          @db.Uuid
+  pregnancyId             String?         @db.Uuid
+  motherProfileId         String?         @db.Uuid
+  babyId                  String?         @db.Uuid
+  eventId                 String?         @db.Uuid
+  importBatchId           String?         @db.Uuid
+  status                  ReportStatus    @default(UPLOADING)
+  category                ReportCategory?
+  title                   String?
+  reportDate              DateTime?       @db.Date
+  institution             String?
+  conclusion              String?
+  rawText                 String?
+  ocrProvider             String?
+  ocrRequestId            String?
+  explanationJson         Json?
+  explanationGeneratedAt  DateTime?
+  confirmedAt             DateTime?
+  confirmedByUserId       String?         @db.Uuid
+  revision                Int             @default(0)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  family              Family               @relation(fields: [familyId], references: [id])
+  pregnancy           Pregnancy?           @relation(fields: [pregnancyId], references: [id])
+  motherProfile       MotherProfile?       @relation(fields: [motherProfileId], references: [id])
+  baby                Baby?                @relation(fields: [babyId], references: [id])
+  event               Event?               @relation(fields: [eventId], references: [id])
+  importBatch         ImportBatch?         @relation(fields: [importBatchId], references: [id])
+  confirmedBy         User?                @relation("ReportConfirmer", fields: [confirmedByUserId], references: [id])
+  attachments         ReportAttachment[]
+  fields              ReportField[]
+  motherHealthRecords MotherHealthRecord[]
+  babyGrowthRecords   BabyGrowthRecord[]
+  vaccinationRecords  VaccinationRecord[]
+
+  @@index([familyId, status])
+  @@index([importBatchId])
+}
+
+model ReportAttachment {
+  id           String @id @default(uuid()) @db.Uuid
+  reportId     String @db.Uuid
+  attachmentId String @db.Uuid
+  pageOrder    Int
+
+  report     Report     @relation(fields: [reportId], references: [id])
+  attachment Attachment @relation(fields: [attachmentId], references: [id])
+
+  @@unique([reportId, attachmentId])
+  @@unique([reportId, pageOrder])
+}
+
+model ReportField {
+  id                     String   @id @default(uuid()) @db.Uuid
+  reportId               String   @db.Uuid
+  section                String?
+  label                  String
+  value                  String?
+  unit                   String?
+  referenceRange         String?
+  sourceFlag             String?
+  fieldType              FieldType
+  tableName              String?
+  rowIndex               Int?
+  columnIndex            Int?
+  columnLabel            String?
+  confidence             Float?
+  sourceText             String?
+  pageNumber             Int?
+  boundingBox            Json?
+  verifiedByUser         Boolean  @default(false)
+  syncedHealthRecordType String?
+  syncedHealthRecordId   String?  @db.Uuid
+  sortOrder              Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  report Report @relation(fields: [reportId], references: [id])
+}
+
+model VisitRecording {
+  id                     String               @id @default(uuid()) @db.Uuid
+  familyId               String               @db.Uuid
+  pregnancyId            String?              @db.Uuid
+  motherProfileId        String?              @db.Uuid
+  babyId                 String?              @db.Uuid
+  eventId                String?              @unique @db.Uuid
+  attachmentId           String               @db.Uuid
+  status                 VisitRecordingStatus @default(UPLOADING)
+  source                 VisitRecordingSource @default(IN_APP)
+  durationSeconds        Int?
+  recordedAt             DateTime
+  transcript             String?
+  transcriptSegmentsJson Json?
+  extractionJson         Json?
+  asrProvider            String?
+  asrRequestId           String?
+  llmProvider            String?
+  llmRequestId           String?
+  confirmedAt            DateTime?
+  confirmedByUserId      String?              @db.Uuid
+  deletedAt              DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  family          Family         @relation(fields: [familyId], references: [id])
+  pregnancy       Pregnancy?     @relation(fields: [pregnancyId], references: [id])
+  motherProfile   MotherProfile? @relation(fields: [motherProfileId], references: [id])
+  baby            Baby?          @relation(fields: [babyId], references: [id])
+  event           Event?         @relation(fields: [eventId], references: [id])
+  attachment      Attachment     @relation(fields: [attachmentId], references: [id])
+  confirmedBy     User?          @relation("VisitRecordingConfirmer", fields: [confirmedByUserId], references: [id])
+  motherHealthRecords MotherHealthRecord[]
+
+  @@index([familyId, status])
+}
+
+model StageSummary {
+  id                String                   @id @default(uuid()) @db.Uuid
+  familyId          String                   @db.Uuid
+  rangeFrom         DateTime
+  rangeTo           DateTime
+  rangePreset       StageSummaryRangePreset?
+  status            StageSummaryStatus       @default(GENERATING)
+  resultJson        Json?
+  simplifiedText    String?
+  sourceFingerprint String
+  llmProvider       String?
+  llmRequestId      String?
+  generatedAt       DateTime?
+  createdByUserId   String                   @db.Uuid
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  family    Family @relation(fields: [familyId], references: [id])
+  createdBy User   @relation("StageSummaryCreator", fields: [createdByUserId], references: [id])
+
+  @@index([familyId, status])
+  @@index([familyId, sourceFingerprint])
+}
+
+model KnowledgeEntry {
+  id                   String            @id
+  category             KnowledgeCategory
+  title                String
+  plainText            String
+  stage                EventStage?
+  gestationalWeekFrom  Int?
+  gestationalWeekTo    Int?
+  babyMonthAge         Int?
+  checklistKind        ChecklistKind?
+  sourceNote           String
+  version              Int               @default(1)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([category, stage])
+}
+
+model MotherHealthRecord {
+  id                 String            @id @default(uuid()) @db.Uuid
+  familyId           String            @db.Uuid
+  motherProfileId    String            @db.Uuid
+  pregnancyId        String?           @db.Uuid
+  eventId            String            @unique @db.Uuid
+  sourceReportId     String?           @db.Uuid
+  sourceRecordingId  String?           @db.Uuid
+  measurementSource  MeasurementSource @default(MANUAL)
+  stage              MotherHealthStage
+  recordType         MotherRecordType
+  recordedAt         DateTime
+  weightValue        Decimal?          @db.Decimal(8, 2)
+  weightUnit         String?
+  systolic           Int?
+  diastolic          Int?
+  bloodGlucoseValue  Decimal?          @db.Decimal(8, 2)
+  bloodGlucoseUnit   String?
+  fetalMovementCount Int?
+  fetalHeartRate     Int?
+  temperatureValue   Decimal?          @db.Decimal(5, 2)
+  temperatureUnit    String?
+  symptoms           String?
+  createdByUserId    String            @db.Uuid
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  family          Family          @relation(fields: [familyId], references: [id])
+  motherProfile   MotherProfile   @relation(fields: [motherProfileId], references: [id])
+  pregnancy       Pregnancy?      @relation(fields: [pregnancyId], references: [id])
+  event           Event           @relation(fields: [eventId], references: [id])
+  sourceReport    Report?         @relation(fields: [sourceReportId], references: [id])
+  sourceRecording VisitRecording? @relation(fields: [sourceRecordingId], references: [id])
+  createdBy       User            @relation(fields: [createdByUserId], references: [id])
+
+  @@index([familyId, recordedAt])
+}
+
+model BabyGrowthRecord {
+  id                     String         @id @default(uuid()) @db.Uuid
+  familyId               String         @db.Uuid
+  babyId                 String         @db.Uuid
+  eventId                String         @unique @db.Uuid
+  sourceReportId         String?        @db.Uuid
+  recordType             BabyRecordType
+  recordedAt             DateTime
+  weightValue            Decimal?       @db.Decimal(8, 2)
+  weightUnit             String?
+  heightValue            Decimal?       @db.Decimal(8, 2)
+  heightUnit             String?
+  headCircumferenceValue Decimal?       @db.Decimal(8, 2)
+  headCircumferenceUnit  String?
+  milestoneType          String?
+  notes                  String?
+  createdByUserId        String         @db.Uuid
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  family       Family  @relation(fields: [familyId], references: [id])
+  baby         Baby    @relation(fields: [babyId], references: [id])
+  event        Event   @relation(fields: [eventId], references: [id])
+  sourceReport Report? @relation(fields: [sourceReportId], references: [id])
+  createdBy    User    @relation(fields: [createdByUserId], references: [id])
+}
+
+model VaccinationRecord {
+  id              String    @id @default(uuid()) @db.Uuid
+  familyId        String    @db.Uuid
+  babyId          String    @db.Uuid
+  eventId         String    @unique @db.Uuid
+  sourceReportId  String?   @db.Uuid
+  vaccineName     String
+  doseNumber      Int?
+  vaccinatedAt    DateTime
+  institution     String?
+  batchNumber     String?
+  nextDueAt       DateTime?
+  notes           String?
+  createdByUserId String    @db.Uuid
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  family       Family  @relation(fields: [familyId], references: [id])
+  baby         Baby    @relation(fields: [babyId], references: [id])
+  event        Event   @relation(fields: [eventId], references: [id])
+  sourceReport Report? @relation(fields: [sourceReportId], references: [id])
+  createdBy    User    @relation(fields: [createdByUserId], references: [id])
+}
+
+model Reminder {
+  id              String         @id @default(uuid()) @db.Uuid
+  familyId        String         @db.Uuid
+  pregnancyId     String?        @db.Uuid
+  motherProfileId String?        @db.Uuid
+  babyId          String?        @db.Uuid
+  relatedEventId  String?        @db.Uuid
+  type            ReminderType
+  title           String
+  scheduledAt     DateTime
+  status          ReminderStatus @default(PENDING)
+  completedAt     DateTime?
+  createdByUserId String         @db.Uuid
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  family        Family         @relation(fields: [familyId], references: [id])
+  pregnancy     Pregnancy?     @relation(fields: [pregnancyId], references: [id])
+  motherProfile MotherProfile? @relation(fields: [motherProfileId], references: [id])
+  baby          Baby?          @relation(fields: [babyId], references: [id])
+  relatedEvent  Event?         @relation(fields: [relatedEventId], references: [id])
+  createdBy     User           @relation(fields: [createdByUserId], references: [id])
+
+  @@index([familyId, status, scheduledAt])
+}
+
+model ConsentRecord {
+  id               String      @id @default(uuid()) @db.Uuid
+  userId           String      @db.Uuid
+  familyId         String?     @db.Uuid
+  consentType      ConsentType
+  documentVersion  String
+  grantedAt        DateTime
+  withdrawnAt      DateTime?
+  ipMasked         String?
+  userAgentSummary String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  family Family? @relation(fields: [familyId], references: [id])
+}
+
+model AuditLog {
+  id                String   @id @default(uuid()) @db.Uuid
+  familyId          String?  @db.Uuid
+  actorUserId       String?  @db.Uuid
+  action            String
+  resourceType      String
+  resourceId        String?
+  metadataSanitized Json?
+  createdAt         DateTime @default(now())
+
+  family Family? @relation(fields: [familyId], references: [id])
+  actor  User?   @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([familyId, createdAt])
+}
+
+model AsyncJob {
+  id             String    @id @default(uuid()) @db.Uuid
+  familyId       String?   @db.Uuid
+  type           JobType
+  status         JobStatus @default(PENDING)
+  idempotencyKey String    @unique
+  attempts       Int       @default(0)
+  nextRetryAt    DateTime?
+  lastErrorCode  String?
+  payload        Json?
+  result         Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  family Family? @relation(fields: [familyId], references: [id])
+
+  @@index([status, nextRetryAt])
+}
