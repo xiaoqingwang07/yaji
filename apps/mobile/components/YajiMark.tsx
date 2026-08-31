@@ -1,71 +1,26 @@
-import { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { colors, fontFamily, fontFamilySans, spacing } from "@/constants/theme";
 
-/**
- * 芽纪叶芽标识：双叶 + 茎 — 精致几何，品牌有态度
- * 呼吸动效服务于「此刻」页面的生命感
- */
-export function SproutMark({
-  size = 44,
-  breathe = false,
-}: {
-  size?: number;
-  breathe?: boolean;
-}) {
-  const pulse = useRef(new Animated.Value(0.6)).current;
-  useEffect(() => {
-    if (!breathe) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 2200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.6,
-          duration: 2200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [breathe, pulse]);
-
-  const leafW = size * 0.38;
-  const leafH = size * 0.54;
+/** 简洁的双叶标识，只承担品牌识别，不抢占健康信息的注意力。 */
+export function SproutMark({ size = 40 }: { size?: number; breathe?: boolean }) {
+  const leafW = size * 0.36;
+  const leafH = size * 0.5;
   return (
     <View style={[styles.mark, { width: size, height: size }]}>
-      <Animated.View
-        style={[
-          styles.glow,
-          {
-            width: size * 1.1,
-            height: size * 1.1,
-            borderRadius: size,
-            backgroundColor: colors.brandGlow,
-            opacity: breathe ? pulse : 0,
-          },
-        ]}
-      />
       <View
         style={[
           styles.leaf,
           {
             width: leafW,
             height: leafH,
-            borderTopLeftRadius: leafW * 0.9,
-            borderTopRightRadius: leafW * 0.3,
-            borderBottomRightRadius: leafW * 0.9,
-            borderBottomLeftRadius: leafW * 0.3,
+            borderTopLeftRadius: leafW,
+            borderTopRightRadius: leafW * 0.25,
+            borderBottomRightRadius: leafW,
+            borderBottomLeftRadius: leafW * 0.25,
             backgroundColor: colors.brand,
-            left: size * 0.16,
-            top: size * 0.14,
-            transform: [{ rotate: "-25deg" }],
+            left: size * 0.17,
+            top: size * 0.16,
+            transform: [{ rotate: "-28deg" }],
           },
         ]}
       />
@@ -73,17 +28,16 @@ export function SproutMark({
         style={[
           styles.leaf,
           {
-            width: leafW * 0.88,
-            height: leafH * 0.88,
-            borderTopLeftRadius: leafW * 0.3,
-            borderTopRightRadius: leafW * 0.9,
-            borderBottomRightRadius: leafW * 0.3,
-            borderBottomLeftRadius: leafW * 0.9,
+            width: leafW * 0.84,
+            height: leafH * 0.84,
+            borderTopLeftRadius: leafW * 0.25,
+            borderTopRightRadius: leafW,
+            borderBottomRightRadius: leafW * 0.25,
+            borderBottomLeftRadius: leafW,
             backgroundColor: colors.accent,
-            right: size * 0.16,
-            top: size * 0.18,
-            transform: [{ rotate: "25deg" }],
-            opacity: 0.88,
+            right: size * 0.18,
+            top: size * 0.2,
+            transform: [{ rotate: "28deg" }],
           },
         ]}
       />
@@ -91,11 +45,11 @@ export function SproutMark({
         style={[
           styles.stem,
           {
-            width: size * 0.06,
-            height: size * 0.3,
-            borderRadius: size * 0.03,
-            backgroundColor: colors.brandDark,
-            bottom: size * 0.08,
+            width: Math.max(2, size * 0.055),
+            height: size * 0.27,
+            borderRadius: size,
+            backgroundColor: colors.brandDeep,
+            bottom: size * 0.09,
             left: size * 0.47,
           },
         ]}
@@ -104,27 +58,19 @@ export function SproutMark({
   );
 }
 
-export function AiAssistChip({ label = "芽纪帮读" }: { label?: string }) {
+export function AiAssistChip({ label = "芽纪解读" }: { label?: string }) {
   return (
     <View style={styles.aiChip}>
-      <SproutMark size={16} />
+      <SproutMark size={15} />
       <Text style={styles.aiChipText}>{label}</Text>
     </View>
   );
 }
 
-export function BrandLockup({
-  subtitle,
-  compact,
-  style,
-}: {
-  subtitle?: string;
-  compact?: boolean;
-  style?: ViewStyle;
-}) {
+export function BrandLockup({ subtitle, compact, style }: { subtitle?: string; compact?: boolean; style?: ViewStyle }) {
   return (
     <View style={[styles.lockup, compact && styles.lockupCompact, style]}>
-      <SproutMark size={compact ? 32 : 48} />
+      <SproutMark size={compact ? 30 : 42} />
       <View style={styles.lockupText}>
         <Text style={[styles.wordmark, compact && styles.wordmarkCompact]}>芽纪</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -133,107 +79,30 @@ export function BrandLockup({
   );
 }
 
-export function WarmGlow({ variant = "default" }: { variant?: "default" | "peach" | "mint" }) {
-  const a =
-    variant === "peach"
-      ? colors.accentGlow
-      : variant === "mint"
-        ? colors.brandGlow
-        : "rgba(232, 160, 138, 0.2)";
-  const b =
-    variant === "peach"
-      ? colors.roseSoft
-      : variant === "mint"
-        ? colors.skySoft
-        : "rgba(90, 158, 136, 0.15)";
-
-  return (
-    <View pointerEvents="none" style={styles.glowLayer}>
-      <View style={[styles.blob, styles.blobTL, { backgroundColor: a }]} />
-      <View style={[styles.blob, styles.blobTR, { backgroundColor: b }]} />
-    </View>
-  );
+/** 保留 Screen 的兼容入口；新版不使用装饰性光斑背景。 */
+export function WarmGlow(_: { variant?: "default" | "peach" | "mint" }) {
+  return null;
 }
 
 const styles = StyleSheet.create({
-  mark: {
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible",
-  },
-  glow: {
-    position: "absolute",
-  },
-  leaf: {
-    position: "absolute",
-  },
-  stem: {
-    position: "absolute",
-  },
+  mark: { alignItems: "center", justifyContent: "center" },
+  leaf: { position: "absolute" },
+  stem: { position: "absolute" },
   aiChip: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
     gap: 6,
     paddingVertical: 5,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 999,
     backgroundColor: colors.brandSoft,
-    borderWidth: 1,
-    borderColor: "rgba(90, 158, 136, 0.12)",
   },
-  aiChipText: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.brandDark,
-    letterSpacing: 0.3,
-  },
-  lockup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: spacing.xl,
-  },
-  lockupCompact: {
-    marginBottom: spacing.md,
-    gap: 10,
-  },
-  lockupText: { flex: 1, gap: 3 },
-  wordmark: {
-    fontFamily,
-    fontSize: 28,
-    fontWeight: "700",
-    letterSpacing: 1,
-    color: colors.text,
-  },
-  wordmarkCompact: {
-    fontSize: 20,
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontFamily: fontFamilySans,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textSecondary,
-  },
-  glowLayer: {
-    ...(StyleSheet.absoluteFill as object),
-    overflow: "hidden",
-  },
-  blob: {
-    position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 260,
-    opacity: 0.85,
-  },
-  blobTL: {
-    top: -100,
-    left: -80,
-  },
-  blobTR: {
-    top: -60,
-    right: -110,
-  },
+  aiChipText: { fontFamily: fontFamilySans, fontSize: 12, fontWeight: "700", color: colors.brandDark },
+  lockup: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: spacing.xl },
+  lockupCompact: { marginBottom: spacing.md, gap: 8 },
+  lockupText: { flex: 1, gap: 2 },
+  wordmark: { fontFamily, fontSize: 27, fontWeight: "700", color: colors.text },
+  wordmarkCompact: { fontSize: 19 },
+  subtitle: { fontFamily: fontFamilySans, fontSize: 13, lineHeight: 19, color: colors.textSecondary },
 });

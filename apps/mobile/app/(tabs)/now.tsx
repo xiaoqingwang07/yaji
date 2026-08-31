@@ -1,30 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  Easing,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Caption, CollapsibleSection, Screen } from "@/components/ui";
+import { useMemo } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { MetricStrip } from "@/components/MetricVisual";
+import { Screen } from "@/components/ui";
 import { SproutMark } from "@/components/YajiMark";
-import {
-  colors,
-  fontFamily,
-  fontFamilyDisplay,
-  fontFamilySans,
-  radii,
-  spacing,
-  typography,
-  WHY_BOUNDARY,
-  WARM_COPY,
-} from "@/constants/theme";
-import { go } from "@/src/nav";
+import { colors, DISCLAIMERS, fontFamilySans, radii, spacing, typography, WARM_COPY } from "@/constants/theme";
 import type { NextActionCta, NextActionItem } from "@/src/fixtures/types";
+import { go } from "@/src/nav";
 import { usePrototype } from "@/src/state/PrototypeContext";
 import { getNodeLabel } from "@/src/utils/stage";
 
@@ -34,8 +15,6 @@ function todayLabel() {
   return `${d.getMonth() + 1}月${d.getDate()}日 · 周${weekdays[d.getDay()]}`;
 }
 
-const PRIMARY_VISIBLE = 3;
-
 function resolvePrimaryCta(item: NextActionItem): NextActionCta {
   if (item.primaryCta) return item.primaryCta;
   if (item.isReferenceSchedule || item.source === "CALENDAR") return "REMINDER";
@@ -43,767 +22,210 @@ function resolvePrimaryCta(item: NextActionItem): NextActionCta {
   return "COMPLETE";
 }
 
-function buildNextSubtitle(item: NextActionItem): string {
-  const titleHasOpenLoop = /未闭环/.test(item.title);
-  const isRef = Boolean(item.isReferenceSchedule);
-  const statusBit = isRef
-    ? "参考日程"
-    : item.source === "REPORT" && !titleHasOpenLoop
-      ? "未闭环"
-      : item.dueLabel?.includes("已预约") || item.detail?.includes("已预约")
-        ? "已预约"
-        : null;
-  const due = item.dueLabel?.replace(/\s*·\s*已预约/, "") || item.dueLabel;
-  return [due, statusBit]
-    .filter(Boolean)
-    .filter((x, i, arr) => arr.indexOf(x) === i)
-    .join(" · ");
+function actionLabel(cta: NextActionCta) {
+  return { DETAIL: "查看", BRING: "看清单", REMINDER: "设提醒", COMPLETE: "完成" }[cta];
 }
 
-function ctaLabel(cta: NextActionCta): string {
-  switch (cta) {
-    case "DETAIL":
-      return "详情";
-    case "BRING":
-      return "携带清单";
-    case "REMINDER":
-      return "设提醒";
-    case "COMPLETE":
-      return "完成";
-  }
+function sourceLabel(item: NextActionItem) {
+  if (item.isReferenceSchedule || item.source === "CALENDAR") return "参考日程";
+  if (item.source === "REPORT") return "来自报告";
+  if (item.source === "DOCTOR_NOTE") return "医生叮嘱";
+  return "我的提醒";
 }
 
 export default function NowScreen() {
-  const { state, completeNextAction, toggleBringItem, canWrite } = usePrototype();
-  const [showMoreNext, setShowMoreNext] = useState(false);
-  const [expandedWhy, setExpandedWhy] = useState<Record<string, boolean>>({});
-  const [extraOpen, setExtraOpen] = useState(false);
-  const heroFade = useRef(new Animated.Value(0)).current;
-  const heroSlide = useRef(new Animated.Value(22)).current;
+  const { state, completeNextAction, canWrite } = usePrototype();
   const node = getNodeLabel(state);
+  const pending = useMemo(
+    () =>
+      state.nextActions
+        .filter((item) => item.status === "PENDING")
+        .sort((a, b) => Number(Boolean(a.isReferenceSchedule)) - Number(Boolean(b.isReferenceSchedule))),
+    [state.nextActions],
+  );
+  const focus = pending[0];
+  const upcoming = pending.slice(1, 3);
+  const reportCount = state.events.filter((event) => event.reportId).length;
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(heroFade, {
-        toValue: 1,
-        duration: 780,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(heroSlide, {
-        toValue: 0,
-        duration: 780,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [heroFade, heroSlide]);
-
-  const pending = state.nextActions.filter((n) => n.status === "PENDING");
-  const ordered = [...pending].sort((a, b) => {
-    const rank = (x: typeof a) => (x.isReferenceSchedule ? 1 : 0);
-    return rank(a) - rank(b);
-  });
-  const visible = showMoreNext ? ordered : ordered.slice(0, PRIMARY_VISIBLE);
-  const hiddenCount = Math.max(0, ordered.length - PRIMARY_VISIBLE);
-
-  const weight = state.motherHealth.find((p) => p.label === "体重");
-  const bp = state.motherHealth.find((p) => p.label === "血压");
-  const fh = state.motherHealth.find((p) => p.label.includes("胎心"));
   const metricItems = [
-    { label: "胎心", value: fh?.value, unit: fh?.unit },
-    { label: "体重", value: weight?.value, unit: weight?.unit },
-    { label: "血压", value: bp?.value, unit: bp?.unit },
-  ].filter((m) => m.value);
+    state.motherHealth.find((point) => point.label.includes("胎心")),
+    state.motherHealth.find((point) => point.label === "体重"),
+    state.motherHealth.find((point) => point.label === "血压"),
+  ]
+    .filter((point): point is NonNullable<typeof point> => Boolean(point))
+    .map((point) => ({ label: point.label, value: point.value, unit: point.unit }));
 
-  const askComplete = (id: string, title: string) => {
-    Alert.alert("标记完成？", `确认「${title}」已经做完了吗？`, [
-      { text: "再等等", style: "cancel" },
-      { text: "已完成", onPress: () => completeNextAction(id) },
+  const runAction = (item: NextActionItem) => {
+    const cta = resolvePrimaryCta(item);
+    if (!canWrite && cta !== "DETAIL") return;
+    if (cta === "DETAIL") {
+      go(item.linkedEventId ? `/event/${item.linkedEventId}` : "/(tabs)/timeline");
+      return;
+    }
+    if (cta === "BRING") {
+      go("/(tabs)/timeline");
+      return;
+    }
+    if (cta === "REMINDER") {
+      go(`/reminder/new?title=${encodeURIComponent(item.title)}`);
+      return;
+    }
+    Alert.alert("标记完成？", `确认「${item.title}」已经完成了吗？`, [
+      { text: "暂不", style: "cancel" },
+      { text: "已完成", onPress: () => completeNextAction(item.id) },
     ]);
   };
 
-  const runPrimaryCta = (item: NextActionItem, cta: NextActionCta) => {
-    if (!canWrite && cta !== "DETAIL") return;
-    switch (cta) {
-      case "DETAIL":
-        if (item.linkedEventId) go(`/event/${item.linkedEventId}`);
-        else go("/(tabs)/timeline");
-        break;
-      case "BRING":
-        setExtraOpen(true);
-        break;
-      case "REMINDER":
-        go(
-          `/reminder/new?title=${encodeURIComponent(item.title)}${
-            item.detail ? `&notes=${encodeURIComponent(item.detail)}` : ""
-          }`,
-        );
-        break;
-      case "COMPLETE":
-        askComplete(item.id, item.title);
-        break;
-    }
-  };
-
-  const toggleWhy = (id: string) =>
-    setExpandedWhy((prev) => ({ ...prev, [id]: !prev[id] }));
-
-  const moreBits: string[] = [];
-  if (metricItems.length) moreBits.push(`${metricItems.length} 项指标`);
-  if (state.bringList.length) moreBits.push(`${state.bringList.length} 件携带`);
-  if (state.lastVisit) moreBits.push("最近就诊");
-  const moreSummary = moreBits.join(" · ");
-  const hasMore = moreBits.length > 0;
-
   return (
-    <Screen glow glowVariant="mint" safeTop>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 顶栏 */}
+    <Screen safeTop>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.topRow}>
           <View>
-            <Text style={styles.dateLabel}>{todayLabel()}</Text>
-            <Text style={styles.companion}>{WARM_COPY.nowCompanion}</Text>
+            <Text style={styles.brand}>芽纪</Text>
+            <Text style={styles.date}>{todayLabel()}</Text>
           </View>
-          <SproutMark size={34} breathe />
+          <SproutMark size={30} />
         </View>
 
-        {/* 全幅孕周舞台 —— 非卡片堆叠 */}
-        <Animated.View
-          style={[
-            styles.heroStage,
-            { opacity: heroFade, transform: [{ translateY: heroSlide }] },
-          ]}
-        >
-          <View style={styles.heroWash} />
-          <Text style={styles.heroKicker}>当前节点</Text>
-          <View style={styles.heroNumberRow}>
-            <Text style={styles.heroNumber}>{node.heroNumber}</Text>
-            <View style={styles.heroMeta}>
-              <Text style={styles.heroUnit}>{node.heroUnit}</Text>
-              {node.heroAside ? (
-                <Text style={styles.heroAside}>{node.heroAside}</Text>
-              ) : null}
+        <View style={styles.stage}>
+          <Text style={styles.eyebrow}>当前阶段</Text>
+          <View style={styles.stageRow}>
+            <Text style={styles.stageNumber}>{node.heroNumber}</Text>
+            <View style={styles.stageMeta}>
+              <Text style={styles.stageUnit}>{node.heroUnit}</Text>
+              {node.heroAside ? <Text style={styles.stageAside}>{node.heroAside}</Text> : null}
             </View>
           </View>
-          <Text style={styles.stageLine}>{node.stageLine}</Text>
-          {node.subtitle ? <Text style={styles.heroSub}>{node.subtitle}</Text> : null}
+          <Text style={styles.stageTitle}>{node.stageLine}</Text>
+          <Text style={styles.stageSub}>{node.subtitle}</Text>
           {typeof node.progress === "number" ? (
             <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${Math.round(node.progress * 100)}%` },
-                ]}
-              />
+              <View style={[styles.progressFill, { width: `${Math.round(node.progress * 100)}%` }]} />
             </View>
           ) : null}
-        </Animated.View>
-
-        {/* 下一步 · 单列叙事 */}
-        <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>下一步</Text>
-          <Text style={styles.sectionHint}>每件事都说明事由</Text>
         </View>
 
-        {ordered.length === 0 ? (
-          <View style={styles.emptyBlock}>
-            <Text style={styles.emptyTitle}>这一刻很安静</Text>
-            <Text style={styles.emptyHint}>{WARM_COPY.emptyNext}</Text>
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>现在最重要</Text>
+          <Text style={styles.sectionHint}>基于已确认档案</Text>
+        </View>
+
+        {focus ? (
+          <View style={styles.focusPanel}>
+            <View style={styles.focusMeta}>
+              <Text style={styles.focusSource}>{sourceLabel(focus)}</Text>
+              {focus.dueLabel ? <Text style={styles.focusDate}>{focus.dueLabel}</Text> : null}
+            </View>
+            <Text style={styles.focusTitle}>{focus.title}</Text>
+            {focus.detail ? <Text style={styles.focusDetail}>{focus.detail}</Text> : null}
+            {focus.why ? <Text style={styles.focusWhy}>{focus.why}</Text> : null}
+            <View style={styles.focusFooter}>
+              <Text style={styles.reference}>{focus.isReferenceSchedule ? DISCLAIMERS.calendar : "档案事实提示"}</Text>
+              <Pressable onPress={() => runAction(focus)} style={styles.focusAction}>
+                <Text style={styles.focusActionText}>{actionLabel(resolvePrimaryCta(focus))}</Text>
+              </Pressable>
+            </View>
           </View>
         ) : (
-          <View style={styles.storyRail}>
-            {visible.map((item, index) => {
-              const cta = resolvePrimaryCta(item);
-              const subtitle = buildNextSubtitle(item);
-              const showCompleteLink = canWrite && cta !== "COMPLETE";
-              const isExpanded = Boolean(expandedWhy[item.id]);
-              const isLast = index === visible.length - 1 && hiddenCount === 0;
-
-              return (
-                <View key={item.id} style={styles.storyItem}>
-                  <View style={styles.railCol}>
-                    <View
-                      style={[
-                        styles.railDot,
-                        item.source === "REPORT" && styles.railDotAccent,
-                      ]}
-                    />
-                    {!isLast ? <View style={styles.railLine} /> : null}
-                  </View>
-
-                  <View style={styles.storyBody}>
-                    <View style={styles.actionTop}>
-                      <View style={{ flex: 1, paddingRight: 8 }}>
-                        <Text style={styles.actionTitle}>{item.title}</Text>
-                        {subtitle ? (
-                          <Text style={styles.actionDue}>{subtitle}</Text>
-                        ) : null}
-                      </View>
-                      <Pressable
-                        onPress={() => runPrimaryCta(item, cta)}
-                        hitSlop={8}
-                        style={[
-                          styles.actionCta,
-                          cta === "COMPLETE" && styles.actionCtaDone,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.actionCtaText,
-                            cta === "COMPLETE" && styles.actionCtaTextDone,
-                          ]}
-                        >
-                          {ctaLabel(cta)}
-                        </Text>
-                      </Pressable>
-                    </View>
-
-                    {/* why：默认 1 行可见，不点详情也能感知事由 */}
-                    {item.why ? (
-                      <Pressable
-                        onPress={() => toggleWhy(item.id)}
-                        style={styles.whyBlock}
-                        accessibilityRole="button"
-                        accessibilityState={{ expanded: isExpanded }}
-                      >
-                        <Text style={styles.whyLabel}>{WARM_COPY.whyLabel}</Text>
-                        <Text
-                          style={styles.whyText}
-                          numberOfLines={isExpanded ? undefined : 1}
-                        >
-                          {item.why}
-                        </Text>
-                        {isExpanded ? (
-                          <Text style={styles.whyNote}>
-                            {item.whyNote || WHY_BOUNDARY}
-                          </Text>
-                        ) : (
-                          <Text style={styles.whyToggle}>展开全文</Text>
-                        )}
-                      </Pressable>
-                    ) : null}
-
-                    {showCompleteLink ? (
-                      <Pressable
-                        onPress={() => askComplete(item.id, item.title)}
-                        hitSlop={6}
-                        style={styles.completeArea}
-                      >
-                        <Text style={styles.completeLink}>标记完成</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-
-            {hiddenCount > 0 ? (
-              <Pressable
-                onPress={() => setShowMoreNext((v) => !v)}
-                style={styles.moreRow}
-              >
-                <Text style={styles.moreText}>
-                  {showMoreNext ? "收起" : `另 ${hiddenCount} 条`}
-                </Text>
-              </Pressable>
-            ) : null}
+          <View style={styles.emptyFocus}>
+            <Text style={styles.emptyTitle}>先收下第一份记录</Text>
+            <Text style={styles.emptyText}>{WARM_COPY.emptyNext}</Text>
           </View>
         )}
 
-        <Text style={styles.disclaimer}>
-          以上为常见安排的档案说明，以医生实际安排为准。参考日程另标「参考日程」。
-        </Text>
-
         {canWrite ? (
-          <Pressable
-            onPress={() => go("/add-menu")}
-            style={({ pressed }) => [
-              styles.collectEntry,
-              pressed && { opacity: 0.78 },
-            ]}
-          >
-            <View style={styles.collectMark}>
-              <Text style={styles.collectMarkText}>收</Text>
+          <Pressable onPress={() => go("/add-menu")} style={styles.reportEntry}>
+            <View style={styles.reportEntryMark}><Text style={styles.reportEntryMarkText}>＋</Text></View>
+            <View style={styles.reportEntryText}>
+              <Text style={styles.reportEntryTitle}>{WARM_COPY.collectAction}</Text>
+              <Text style={styles.reportEntrySub}>{WARM_COPY.nowBringIn}</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.collectText}>{WARM_COPY.collectAction}</Text>
-              <Text style={styles.collectHint}>{WARM_COPY.nowBringIn}</Text>
-            </View>
-            <Text style={styles.collectArrow}>→</Text>
+            <Text style={styles.entryArrow}>›</Text>
           </Pressable>
         ) : null}
 
-        {hasMore ? (
-          <CollapsibleSection
-            title={WARM_COPY.nowExtra}
-            summary={moreSummary}
-            open={extraOpen}
-            onOpenChange={setExtraOpen}
-          >
-            {metricItems.length > 0 ? (
-              <View style={styles.block}>
-                <Caption>成长痕迹</Caption>
-                <MetricStrip
-                  items={metricItems}
-                  onPressItem={() => go("/(tabs)/health")}
-                />
-              </View>
-            ) : null}
-
-            {state.bringList.length > 0 ? (
-              <View style={styles.block}>
-                <Caption>下次带上</Caption>
-                {state.bringList.slice(0, 3).map((b) => (
-                  <Pressable
-                    key={b.id}
-                    style={styles.bringRow}
-                    onPress={canWrite ? () => toggleBringItem(b.id) : undefined}
-                  >
-                    <View
-                      style={[
-                        styles.bringCheck,
-                        b.checked && styles.bringCheckDone,
-                      ]}
-                    >
-                      {b.checked ? (
-                        <Text style={styles.bringCheckMark}>✓</Text>
-                      ) : null}
-                    </View>
-                    <Text
-                      style={[
-                        styles.bringTitle,
-                        b.checked && styles.bringTitleDone,
-                      ]}
-                    >
-                      {b.title}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-
-            {state.lastVisit ? (
-              <Pressable
-                onPress={() => go("/(tabs)/timeline")}
-                style={styles.visitCard}
-              >
-                <Text style={styles.visitLabel}>最近就诊</Text>
-                <Text style={styles.visitTitle}>{state.lastVisit.title}</Text>
-                <Text style={styles.visitDate}>{state.lastVisit.date}</Text>
+        {upcoming.length > 0 ? (
+          <View style={styles.upcoming}>
+            <Text style={styles.sectionTitle}>接下来</Text>
+            {upcoming.map((item) => (
+              <Pressable key={item.id} onPress={() => runAction(item)} style={styles.upcomingRow}>
+                <View style={[styles.actionDot, item.source === "REPORT" && styles.actionDotReport]} />
+                <View style={styles.upcomingText}>
+                  <Text style={styles.upcomingTitle}>{item.title}</Text>
+                  <Text style={styles.upcomingMeta}>{[item.dueLabel, sourceLabel(item)].filter(Boolean).join(" · ")}</Text>
+                </View>
+                <Text style={styles.entryArrow}>›</Text>
               </Pressable>
-            ) : null}
-          </CollapsibleSection>
+            ))}
+          </View>
         ) : null}
 
-        {!canWrite ? (
-          <Text style={styles.viewOnly}>当前为仅查看。</Text>
-        ) : null}
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>档案变化</Text>
+          <Pressable onPress={() => go("/(tabs)/timeline")}><Text style={styles.textLink}>查看全部</Text></Pressable>
+        </View>
+        {metricItems.length > 0 ? <MetricStrip items={metricItems} onPressItem={() => go("/(tabs)/health")} /> : null}
+        <Pressable onPress={() => go("/(tabs)/timeline")} style={styles.archiveSummary}>
+          <View>
+            <Text style={styles.archiveCount}>{state.events.length} 条已整理记录</Text>
+            <Text style={styles.archiveSub}>{reportCount ? `${reportCount} 份报告可回看原件、解读与来源` : "报告、叮嘱和居家记录会在同一条时间线里"}</Text>
+          </View>
+          <Text style={styles.entryArrow}>›</Text>
+        </Pressable>
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: 128, paddingTop: 4 },
-
-  topRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: spacing.lg,
-  },
-  dateLabel: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textMuted,
-    letterSpacing: 0.6,
-  },
-  companion: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 5,
-    lineHeight: 18,
-  },
-
-  /* 全幅舞台：打破「白卡片堆」 */
-  heroStage: {
-    marginHorizontal: -spacing.screen,
-    paddingHorizontal: spacing.screen + 6,
-    paddingTop: 28,
-    paddingBottom: 32,
-    marginBottom: spacing.xl,
-    overflow: "hidden",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.separator,
-  },
-  heroWash: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: colors.warmCard,
-  },
-  heroKicker: {
-    fontFamily: fontFamilySans,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 2,
-    color: colors.brandDark,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  heroNumberRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-  },
-  heroNumber: {
-    ...typography.heroNumber,
-    lineHeight: 112,
-  },
-  heroMeta: { marginBottom: 26 },
-  heroUnit: {
-    fontFamily: fontFamilyDisplay,
-    fontSize: 24,
-    fontWeight: "300",
-    color: colors.textSecondary,
-    letterSpacing: -0.4,
-  },
-  heroAside: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    fontWeight: "500",
-    color: colors.textMuted,
-    marginTop: 4,
-    fontVariant: ["tabular-nums"],
-  },
-  stageLine: {
-    fontFamily,
-    fontSize: 20,
-    fontWeight: "600",
-    color: colors.brandDark,
-    letterSpacing: 0.4,
-    marginTop: 10,
-  },
-  heroSub: {
-    fontFamily: fontFamilySans,
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 8,
-    lineHeight: 21,
-  },
-  progressTrack: {
-    marginTop: 22,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: "rgba(46, 107, 88, 0.14)",
-    overflow: "hidden",
-    maxWidth: 220,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.brand,
-    borderRadius: 2,
-  },
-
-  sectionHead: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    marginBottom: 18,
-    marginTop: 2,
-  },
-  sectionTitle: { ...typography.editorial },
-  sectionHint: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: "500",
-  },
-
-  emptyBlock: {
-    paddingVertical: spacing.lg,
-    marginBottom: spacing.lg,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.separator,
-  },
-  emptyTitle: {
-    fontFamily,
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  emptyHint: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 20,
-  },
-
-  /* 叙事轨道 */
-  storyRail: { marginBottom: 4 },
-  storyItem: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    minHeight: 96,
-  },
-  railCol: {
-    width: 22,
-    alignItems: "center",
-    paddingTop: 8,
-  },
-  railDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: colors.brand,
-    borderWidth: 2,
-    borderColor: colors.brandSoft,
-  },
-  railDotAccent: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accentSoft,
-  },
-  railLine: {
-    flex: 1,
-    width: 1.5,
-    backgroundColor: colors.fillStrong,
-    marginTop: 6,
-    marginBottom: 2,
-  },
-  storyBody: {
-    flex: 1,
-    paddingBottom: 22,
-    paddingLeft: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.separator,
-    marginBottom: 4,
-  },
-  actionTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-  },
-  actionTitle: {
-    fontFamily,
-    fontSize: 17,
-    fontWeight: "600",
-    color: colors.text,
-    lineHeight: 24,
-    letterSpacing: 0.2,
-  },
-  actionDue: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.textMuted,
-    marginTop: 4,
-    letterSpacing: 0.2,
-  },
-  actionCta: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: radii.sm,
-    backgroundColor: colors.fill,
-    marginTop: 2,
-  },
-  actionCtaDone: { backgroundColor: colors.brandSoft },
-  actionCtaText: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  actionCtaTextDone: {
-    color: colors.brandDark,
-    fontWeight: "700",
-  },
-
-  whyBlock: {
-    marginTop: 12,
-    backgroundColor: colors.whyWash,
-    borderRadius: radii.md,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.brand,
-  },
-  whyLabel: {
-    fontFamily: fontFamilySans,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    color: colors.brandDark,
-    marginBottom: 5,
-  },
-  whyText: {
-    fontFamily: fontFamilySans,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.textSecondary,
-  },
-  whyNote: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 8,
-    lineHeight: 18,
-  },
-  whyToggle: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.brand,
-    marginTop: 6,
-  },
-
-  completeArea: { marginTop: 10, alignSelf: "flex-start" },
-  completeLink: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.textMuted,
-  },
-
-  moreRow: {
-    alignSelf: "flex-start",
-    paddingVertical: 10,
-    paddingLeft: 28,
-  },
-  moreText: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.brand,
-  },
-
-  disclaimer: {
-    fontFamily: fontFamilySans,
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 8,
-    marginBottom: spacing.xl,
-    textAlign: "center",
-    lineHeight: 16,
-  },
-
-  collectEntry: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: colors.surfaceElevated,
-    borderRadius: radii.lg,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  collectMark: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.brandDeep,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  collectMarkText: {
-    fontFamily,
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFFFFF",
-  },
-  collectText: {
-    fontFamily: fontFamilySans,
-    fontSize: 15,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  collectHint: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  collectArrow: {
-    fontSize: 18,
-    color: colors.brand,
-    fontWeight: "300",
-  },
-
-  block: { marginBottom: spacing.md, gap: 8 },
-  bringRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 8,
-  },
-  bringCheck: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.textMuted,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bringCheckDone: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brandSoft,
-  },
-  bringCheckMark: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: colors.brand,
-  },
-  bringTitle: {
-    fontFamily: fontFamilySans,
-    fontSize: 14,
-    color: colors.text,
-    flex: 1,
-  },
-  bringTitleDone: {
-    color: colors.textMuted,
-    textDecorationLine: "line-through",
-  },
-  visitCard: {
-    backgroundColor: colors.warmCardAlt,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    gap: 3,
-  },
-  visitLabel: {
-    fontFamily: fontFamilySans,
-    fontSize: 11,
-    fontWeight: "600",
-    color: colors.textMuted,
-    letterSpacing: 0.5,
-  },
-  visitTitle: {
-    fontFamily,
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  visitDate: {
-    fontFamily: fontFamilySans,
-    fontSize: 12,
-    color: colors.textMuted,
-  },
-  viewOnly: {
-    fontFamily: fontFamilySans,
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: "center",
-    marginTop: spacing.lg,
-  },
+  scroll: { paddingTop: 4, paddingBottom: 128 },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.xl },
+  brand: { fontFamily: fontFamilySans, fontSize: 25, fontWeight: "700", color: colors.text },
+  date: { fontFamily: fontFamilySans, fontSize: 13, color: colors.textMuted, marginTop: 4 },
+  stage: { backgroundColor: colors.warmCard, borderRadius: radii.lg, padding: spacing.lg, marginBottom: spacing.xl },
+  eyebrow: { fontFamily: fontFamilySans, fontSize: 12, fontWeight: "700", color: colors.brandDark, marginBottom: 10 },
+  stageRow: { flexDirection: "row", alignItems: "flex-end" },
+  stageNumber: { ...typography.heroNumber, lineHeight: 68 },
+  stageMeta: { marginLeft: 8, marginBottom: 10 },
+  stageUnit: { fontFamily: fontFamilySans, fontSize: 19, fontWeight: "700", color: colors.text },
+  stageAside: { fontFamily: fontFamilySans, fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  stageTitle: { fontFamily: fontFamilySans, fontSize: 18, fontWeight: "700", color: colors.brandDeep, marginTop: 12 },
+  stageSub: { fontFamily: fontFamilySans, fontSize: 13, lineHeight: 20, color: colors.textSecondary, marginTop: 6 },
+  progressTrack: { height: 4, borderRadius: 4, overflow: "hidden", backgroundColor: colors.fillStrong, marginTop: 18 },
+  progressFill: { height: "100%", borderRadius: 4, backgroundColor: colors.brand },
+  sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 },
+  sectionTitle: { fontFamily: fontFamilySans, fontSize: 18, fontWeight: "700", color: colors.text },
+  sectionHint: { fontFamily: fontFamilySans, fontSize: 12, color: colors.textMuted },
+  focusPanel: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg, padding: spacing.lg, marginBottom: spacing.md },
+  focusMeta: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  focusSource: { fontFamily: fontFamilySans, fontSize: 12, fontWeight: "700", color: colors.brandDark, backgroundColor: colors.brandSoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.sm },
+  focusDate: { fontFamily: fontFamilySans, fontSize: 12, color: colors.textMuted, flexShrink: 1, marginLeft: 8, textAlign: "right" },
+  focusTitle: { fontFamily: fontFamilySans, fontSize: 20, fontWeight: "700", lineHeight: 28, color: colors.text },
+  focusDetail: { fontFamily: fontFamilySans, fontSize: 14, lineHeight: 21, color: colors.textSecondary, marginTop: 8 },
+  focusWhy: { fontFamily: fontFamilySans, fontSize: 13, lineHeight: 20, color: colors.textMuted, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+  focusFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 16 },
+  reference: { flex: 1, fontFamily: fontFamilySans, fontSize: 11, lineHeight: 16, color: colors.textMuted },
+  focusAction: { minHeight: 40, justifyContent: "center", paddingHorizontal: 14, borderRadius: radii.md, backgroundColor: colors.brandDeep },
+  focusActionText: { fontFamily: fontFamilySans, fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
+  emptyFocus: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.separator, paddingVertical: spacing.lg, marginBottom: spacing.md },
+  emptyTitle: { fontFamily: fontFamilySans, fontSize: 17, fontWeight: "700", color: colors.text },
+  emptyText: { fontFamily: fontFamilySans, fontSize: 13, lineHeight: 20, color: colors.textMuted, marginTop: 5 },
+  reportEntry: { minHeight: 72, flexDirection: "row", alignItems: "center", backgroundColor: colors.brandDeep, borderRadius: radii.lg, paddingHorizontal: 14, marginBottom: spacing.xl },
+  reportEntryMark: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.16)" },
+  reportEntryMarkText: { color: "#FFFFFF", fontSize: 24, fontWeight: "300", lineHeight: 28 },
+  reportEntryText: { flex: 1, marginLeft: 12 },
+  reportEntryTitle: { fontFamily: fontFamilySans, fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
+  reportEntrySub: { fontFamily: fontFamilySans, fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 4 },
+  entryArrow: { fontFamily: fontFamilySans, fontSize: 24, fontWeight: "300", color: colors.textMuted },
+  upcoming: { marginBottom: spacing.xl },
+  upcomingRow: { minHeight: 64, flexDirection: "row", alignItems: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator },
+  actionDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brand, marginRight: 12 },
+  actionDotReport: { backgroundColor: colors.accent },
+  upcomingText: { flex: 1, paddingVertical: 12 },
+  upcomingTitle: { fontFamily: fontFamilySans, fontSize: 15, fontWeight: "600", color: colors.text },
+  upcomingMeta: { fontFamily: fontFamilySans, fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  textLink: { fontFamily: fontFamilySans, fontSize: 13, fontWeight: "700", color: colors.brandDark },
+  archiveSummary: { minHeight: 72, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, marginTop: 2 },
+  archiveCount: { fontFamily: fontFamilySans, fontSize: 15, fontWeight: "700", color: colors.text },
+  archiveSub: { fontFamily: fontFamilySans, fontSize: 12, color: colors.textMuted, marginTop: 4, maxWidth: 280 },
 });
